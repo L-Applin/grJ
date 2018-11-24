@@ -2,24 +2,21 @@ package org.graph;
 
 interface Edge<T> {
 
+    /**
+     * return both vertices of the edges as an array of two vertices
+     * @return
+     */
     Vertex<T>[] vertices();
 
-
     /**
-     * A basic immutable implementation of the Edge interface
-     * @param <T>
+     * return both vertices elements of the edges as an array of two element
+     * @return
      */
-    class BasicImmutableEdge<T> implements Edge<T> {
-        private final Vertex<T> first, second;
-        public BasicImmutableEdge(Vertex<T> first, Vertex<T> second) {
-            this.first = first;
-            this.second = second;
-        }
+    T[] asElement();
 
-        @SuppressWarnings({"unchecked"})
-        public Vertex<T>[] vertices() {
-            return (Vertex<T>[]) new Object[]{first, second};
-        }
+    default String toStringDectipition(){
+        return "["+vertices()[0].value().toString() + ", " + vertices()[1].value().toString()+"]";
     }
+
 
 }

@@ -1,42 +1,20 @@
 package org.graph;
 
-import java.util.*;
 
-public class Vertices {
+import java.util.*;
+import static org.graph.ImmutableVertex.BasicImmutableVertex;
+
+public final class Vertices {
 
     public Vertices()
     { throw new UnsupportedOperationException("Cannot instanciate static class Vertices"); }
 
 
-    static class BasicImmutableVertex<T> implements Vertex<T>{
-
-        /**
-         * The value of the value.
-         */
-        private final T value;
-
-        private final Set<Vertex<T>> neighbours;
-
-        public BasicImmutableVertex(T value, Set<Vertex<T>> neighbours) {
-            this.neighbours = Collections.unmodifiableSet(neighbours);
-            this.value = value;
-        }
-
-        public Collection<Vertex<T>> neighbours() { return neighbours; }
-        public T value() { return value; }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj instanceof Vertex){
-                return false;
-            } else {
-                return value.equals(obj);
-            }
-        }
-    }
-
 
     static class VertexBuilder<T> {
+
+
+        private Vertex<T> builtVertex;
 
         /**
          *
@@ -58,7 +36,10 @@ public class Vertices {
 
 
         public Vertex<T> build(){
-            return new BasicImmutableVertex<>(vertexValue, neigboursToAdd);
+            if (builtVertex == null){
+                builtVertex = new BasicImmutableVertex<>(vertexValue, neigboursToAdd);
+            }
+            return builtVertex;
         }
 
         @Override
@@ -71,8 +52,97 @@ public class Vertices {
 
         @Override
         public int hashCode() {
-
             return Objects.hash(vertexValue);
         }
     }
+
+
+    public static <T> Vertex<T> mutableVertex(T value){
+        return new BasicMutableVertex<>(value, new HashSet<>());
+    }
+
+
+
+    /**
+     * A basic implementation of the Vertex interface using a
+     * Set (HashSet by default_ to represent the neighbours of the vertex in the graph.
+     * @param <T> the data type that is contained in the vertex of the graph.
+     */
+    static class BasicMutableVertex<T> implements Vertex<T> {
+
+
+
+        /**
+         * The value associated with this vertex in the graph.
+         */
+        protected T value;
+
+        /**
+         *
+         */
+        protected Set<Vertex<T>> neighbours;
+
+
+        BasicMutableVertex(T value, Set<Vertex<T>> neighbours) {
+            this.value = value;
+            this.neighbours = neighbours;
+        }
+
+        public Collection<Vertex<T>> neighbours() { return neighbours; }
+        public T value() { return value; }
+        public void setValue(T newValue) { this.value = newValue; }
+
+        public Collection<Vertex<T>> addNeighbours(Vertex<T> newNeighbour) {
+            neighbours.add(newNeighbour);
+            return neighbours;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            BasicMutableVertex<?> that = (BasicMutableVertex<?>) o;
+            return Objects.equals(value, that.value);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(value);
+        }
+
+        @Override
+        public String toString() {
+            return toDescriptiveString();
+        }
+    }
+
+
+    /**
+     * This method produce a vertex comparator based on the element comparator provided
+     * @param elementComparator
+     * @param <T>
+     * @return
+     */
+    public static <T> Comparator<Vertex<T>> vertexComparator(Comparator<T> elementComparator){
+        return (Vertex<T> o1, Vertex<T> o2) -> elementComparator.compare(o1.value(), o2.value());
+    }
+
+
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,19 +1,38 @@
 package org.graph;
 
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.function.Function;
 
+import org.graph.traversal.DepthFirstSearch;
+
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
+
+/**
+ * Root interface for all Graphs.
+ *
+ * IMPORTANT NOTE
+ * Duplicate nodes are not supported. That mean that if two vertices v1 and v2 contain elemnt o1 and o2
+ * such that<code>o1.equals(o2)</code> is true, then v1 and v2 will be treated as the same Vertex. This means that,
+ * for exemple, if v1 is in the graph, adding v2 to it has no effect.
+ * @param <T>
+ */
 public interface Graph<T> extends Collection<Vertex<T>> {
 
-
+    /**
+     * A String identifier to recognize the graph. Optionnal
+     * @return
+     */
     String id();
+
 
     /**
      * All edges of the graph
      * @return
      */
-    Collection<Vertex<T>[]> edges();
+    Collection<Edge<T>> edges();
+
 
     /**
      * All vertices of the graph
@@ -23,35 +42,103 @@ public interface Graph<T> extends Collection<Vertex<T>> {
 
 
     /**
+     * Returns the vertex associated with the value if it appears in the graph, null otherwise
+     * @param value
+     * @return
+     */
+    default Vertex<T> getVertex(T value){
+        AtomicReference<Vertex<T>> v = new AtomicReference<>();
+        vertices().forEach(vertex -> {
+            if (vertex.value().equals(value)){
+                v.set(vertex);
+            }
+        });
+        return v.get();
+
+    }
+
+
+    /**
      * returns all neighbours of the value. Throw
      * @param vertex
      * @return all neighbours of the
      */
     Collection<Vertex<T>> neighbours(Vertex<T> vertex);
 
+
+    /**
+     * Add an edge between the two vertices. Of any of the vertices do not exist in the graph, the method
+     * should create those vertices and add them to the graph
+     * @param v1
+     * @param v2
+     * @return
+     */
+    void addEdge(Vertex<T> v1, Vertex<T> v2);
+
+
     /**
      * the amount of edges in the graph
      * @return
      */
-    int edgesSize();
+    default int edgesSize(){
+        return edges().size();
+    };
+
 
     /**
      * The edges density of the graph. Can be used to determine how dense or sparse the graph is.
      * @return
      */
     default double density() {
-        return vertices().size() / edges().size();
+        return (double) edges().size() / (double) vertices().size();
     }
 
-    boolean isDirected();
-    boolean hasCycle();
 
+    /**
+     * Allows to know if the graph is directed or not
+     * @return true if the graph is directed
+     */
+    boolean isDirected();
+
+
+    /**
+     * Alows to know if the graph is weighted or not
+     * @return true if the edgs of the graph have a weight associated to them
+     */
     boolean isWeigthed();
 
-    default void dfs(Function<Vertex<T>, Vertex<T>> consumer, Vertex<T> start){
-        GraphVisitor<T> gp = new GraphVisitor<>(this);
 
-    };
+    /**
+     *
+     * @return
+     */
+    boolean hasCycle();
+
+
+    /**
+     *
+     * @param elem
+     * @return
+     */
+    default Collection<Vertex<T>> neighboursOf(T elem){
+        AtomicReference<Collection<Vertex<T>>> neigh = new AtomicReference<>();
+        vertices().forEach(v -> {
+            if (v.value().equals(elem)){
+                neigh.set(v.neighbours());
+            }
+        });
+        return neigh.get();
+    }
+
+    /**
+     *
+     */
+    default DepthFirstSearch<T> dfs(){
+        return new DepthFirstSearch<>(this);
+    }
+
+
+
 
 
 
@@ -61,8 +148,9 @@ public interface Graph<T> extends Collection<Vertex<T>> {
     // ========================== //
 
     /**
-     * The size is the number of vertices in the graphe
-     * @return
+     * The size is the number of vertices in the graph.
+     * Basic implementation isbased on the number of vertices in the graph.
+     * @return the number of vertices in the graph
      */
     @Override
     default int size() {
@@ -70,6 +158,10 @@ public interface Graph<T> extends Collection<Vertex<T>> {
     }
 
 
+    /**
+     * Basic implementation based on the number of vertices in the graph.
+     * @return true if the vertices Collection os empty
+     */
     @Override
     default boolean isEmpty() {
         return vertices().isEmpty();
@@ -106,16 +198,59 @@ public interface Graph<T> extends Collection<Vertex<T>> {
         return vertices().containsAll(c);
     }
 
+
+
+
+
+
+
+
+
+
+    // =========================== //
+    //    Loging functionalities   //
+    // =========================== //
+
+
     default String toDescriptiveString(){
         StringBuilder sb = new StringBuilder();
-        String base = "%s : %s\n";
+        String base = "\t%s : %s\n";
 
         vertices().forEach(v ->{
-            String content = String.format(base, v.value().toString(), v.neighbours().toString());
+            String content = String.format(base, v.value().toString(), v.neighbours().stream().map(Vertex::value).collect(Collectors.toList()));
             sb.append(content);
         });
 
-        return String.format("Graphs{%s}", sb.toString());
+        return String.format("Graphs{\n%s}", sb.toString());
     }
+
+
+    /**
+     * Sort Graph's vertices before printing based on the total ordering provided by the Comparator
+     * @param comparator
+     * @return
+     */
+    default String toDescriptiveString(Comparator<? super Vertex<T>> comparator){
+        StringBuilder sb = new StringBuilder();
+        String base = "\t%s : %s\n";
+
+        vertices().stream().sorted(comparator).forEach(v ->{
+            String content = String.format(base, v.value().toString(),
+                    v.neighbours().stream().sorted(comparator).map(Vertex::value).collect(Collectors.toList()));
+            sb.append(content);
+        });
+
+        return String.format("Graphs{\n%s}", sb.toString());
+    }
+
+
+    default void log(){
+        System.out.println(toDescriptiveString());
+    }
+
+    default void log(Comparator<? super Vertex<T>> comparator){
+        System.out.println(toDescriptiveString(comparator));
+    }
+
 
 }

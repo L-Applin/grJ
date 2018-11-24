@@ -1,6 +1,6 @@
 package org.graph;
 
-interface GraphBuilder<T> {
+public interface GraphBuilder<T> {
 
     GraphBuilder <T> addVertex            (T vertex);
     GraphBuilder <T> addEdge              (T v1, T v2);
