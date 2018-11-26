@@ -53,7 +53,7 @@ abstract class ImmutableVertex<T> implements Vertex<T> {
 
 
         /**
-         * Hackish solution to change neighbours while the graph is being built using reflection ...
+         * Hackish solution to change neighbours (even if declared final) while the graph is being built using reflection ...
          * there may be another way
          * @param vertices
          */

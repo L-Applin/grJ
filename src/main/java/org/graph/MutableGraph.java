@@ -1,7 +1,6 @@
 package org.graph;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import static org.graph.Edges.BasicImmutableUndirectedEdge;
@@ -25,7 +24,7 @@ public abstract class MutableGraph<T> implements Graph<T> {
     public Vertex<T> addVertex(T value){
         Vertex<T> v = Vertices.mutableVertex(value);
         if (!contains(v)) {
-            add(v);
+            modified=add(v);
         } else {
             System.out.println(v.toString() + " is already in the graph");
         }
@@ -41,7 +40,7 @@ public abstract class MutableGraph<T> implements Graph<T> {
     public Vertex<T> removeVertex(T value){
         Vertex<T> toRemove = getVertex(value);
         if (toRemove != null){
-            remove(toRemove);
+            modified=remove(toRemove);
         }
         return toRemove;
     }
@@ -55,12 +54,10 @@ public abstract class MutableGraph<T> implements Graph<T> {
      */
     @SafeVarargs
     public final Collection<Vertex<T>> addVertices(T... values){
-        modified = true;
         return Arrays.stream(values).map(this::addVertex).collect(Collectors.toList());
     }
 
     public final Collection<Vertex<T>> addVertices(Collection<T> values){
-        modified = true;
         return values.stream().map(this::addVertex).collect(Collectors.toList());
     }
 
@@ -120,17 +117,17 @@ public abstract class MutableGraph<T> implements Graph<T> {
 
     /**
      * A basic implementation of an undirected, unweighted <i>MUTABLE</i> graph backed by
-     * a Set of vertices that contains their neighbours.
+     * a Map of vetices element as key and their corresponding vertices as value.
      *
      *<p></p>
      *
      * Based on HashSet !
      *
-     * @param <T> the type of the element contain in the Gra^^ Collection
+     * @param <T> the type of the element contain in the Graph Collection
      */
     static class _BasicMutableUnweightedUndirectedGraph<T> extends MutableGraph<T> {
 
-        private Set<Vertex<T>> vertices;
+        private Map<T, Vertex<T>> vertices;
 
         /**
          * Lazy calculation with updatable capabitilites.
@@ -138,7 +135,7 @@ public abstract class MutableGraph<T> implements Graph<T> {
         private List<Edge<T>> edges;
 
 
-        _BasicMutableUnweightedUndirectedGraph(Set<Vertex<T>> vertices) {
+        _BasicMutableUnweightedUndirectedGraph(Map<T, Vertex<T>> vertices) {
             this.vertices = vertices;
         }
 
@@ -159,7 +156,7 @@ public abstract class MutableGraph<T> implements Graph<T> {
 
         private List<Edge<T>> calculateEdges(){
             List<Edge<T>> edges = new ArrayList<>();
-            vertices.forEach(v -> {
+            vertices.values().forEach(v -> {
                 v.neighbours().forEach(neigh -> {
                     Edge<T> e = new BasicImmutableUndirectedEdge<>(v, neigh);
                     if (!edges.contains(e)) {
@@ -171,7 +168,7 @@ public abstract class MutableGraph<T> implements Graph<T> {
         }
 
         public Collection<Vertex<T>> vertices() {
-            return vertices;
+            return vertices.values();
         }
 
         public Collection<Vertex<T>> neighbours(Vertex<T> Vertex) {
@@ -179,16 +176,17 @@ public abstract class MutableGraph<T> implements Graph<T> {
         }
 
         public void addEdge(Vertex<T> v1, Vertex<T> v2) {
-            if (!vertices.contains(v1)){
-                vertices.add(v1);
+            if (!vertices.containsKey(v1.value())){
+                vertices.put(v1.value(), v1);
             }
 
-            if (!vertices.contains(v2)){
-                vertices.add(v2);
+            if (!vertices.containsKey(v2.value())){
+                vertices.put(v2.value(), v2);
             }
 
             v1.addNeighbours(v2);
             v2.addNeighbours(v1);
+
         }
 
 
@@ -205,26 +203,35 @@ public abstract class MutableGraph<T> implements Graph<T> {
             return false;
         }
 
-        public boolean add(Vertex<T> vertex) {
+        public boolean add(Vertex<T> vertexToAdd) {
+            vertices.put(vertexToAdd.value(), vertexToAdd);
+
+            // undirected -> vertexToAdd neighbours must also contains vertexToAdd in their neighbours
+            vertexToAdd.neighbours().forEach(neigh -> {
+                Vertex<T> inGraph = vertices.get(neigh);
+                if (Objects.nonNull(inGraph)){
+                    inGraph.addNeighbours(vertexToAdd);
+                } else {
+                    addEdge(vertexToAdd, neigh);
+                }
+            });
+
+            // todo : tcheck if it was really modified
             modified = true;
-            return vertices.add(vertex);
+            return true;
         }
 
         public boolean remove(Object o) {
-            modified = true;
-            AtomicBoolean removed = new AtomicBoolean(false);
-            vertices.remove(o);
-            vertices.forEach(v -> {
-                System.out.println(v.toString());
-                System.out.println("neighbours : "+v.neighbours().toString());
-                removed.set(v.neighbours().remove(o) || removed.get());
-            });
-            return removed.get();
+            T elem = vertices.remove(o).value();
+            modified = Objects.nonNull(elem);
+            return modified;
         }
 
         public boolean addAll(Collection<? extends Vertex<T>> c) {
             modified = true;
-            return vertices.addAll(c);
+            // todo : tcheck if it was really modified
+            c.forEach(vertex -> vertices.put(vertex.value(), vertex));
+            return modified;
         }
 
         public boolean removeAll(Collection<?> c) {
